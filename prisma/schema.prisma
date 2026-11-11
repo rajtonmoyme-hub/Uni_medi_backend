@@ -1,0 +1,409 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  NORMAL
+  CHILD
+  OLD
+}
+
+enum EntityStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  DISABLED
+}
+
+enum WorkspaceType {
+  HOSPITAL
+  CLINIC
+  DIAGNOSTIC_CENTER
+  CHAMBER
+}
+
+enum StaffInviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  REMOVED
+}
+
+enum AffiliationStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+  REVOKED
+}
+
+enum VaultDocumentType {
+  PRESCRIPTION
+  LAB_REPORT
+  BILLING_DOC
+}
+
+enum QrSessionStatus {
+  GENERATED
+  SCANNED_ACTIVE
+  DISMISSED_BY_DOCTOR
+  REVOKED_BY_PATIENT
+  EXPIRED
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  RESCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum FamilyLinkStatus {
+  PENDING
+  ACTIVE
+  REVOKED
+}
+
+model PatientUser {
+  id               String       @id @default(uuid())
+  uniqueId         String       @unique
+  name             String
+  email            String       @unique
+  phone            String       @unique
+  secondaryEmails  String[]     @default([])
+  secondaryPhones  String[]     @default([])
+  passwordHash     String
+  nationalId       String?      @unique
+  profileAvatar    String?
+  accountType      AccountType  @default(NORMAL)
+  status           EntityStatus @default(ACTIVE)
+  isOtpVerified    Boolean      @default(false)
+  otpCode          String?
+  otpExpiresAt     DateTime?
+  bloodGroup       String?
+  gender           String?
+  dateOfBirth      String?
+  address          String?
+  emergencyContact String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  doctorProfile        DoctorProfile?
+  ownedWorkspaces      Workspace[]          @relation("WorkspaceOwner")
+  workspaceMemberships WorkspaceMember[]
+  vaultDocuments       VaultDocument[]
+  qrSessions           QrShareSession[]
+  appointments         Appointment[]
+  notifications        Notification[]
+  activityLogs         PatientActivityLog[]
+  auditLogsAsActor     WorkspaceAuditLog[]
+
+  maintainedDependents FamilyRelationship[] @relation("MaintainerRelation")
+  managedByMaintainers FamilyRelationship[] @relation("DependentRelation")
+}
+
+model FamilyRelationship {
+  id                String           @id @default(uuid())
+  maintainerId      String
+  dependentId       String
+  relationshipType  AccountType      @default(CHILD)
+  relationshipLabel String
+  initiatedBy       String           @default("MAINTAINER")
+  status            FamilyLinkStatus @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  maintainer PatientUser @relation("MaintainerRelation", fields: [maintainerId], references: [id], onDelete: Cascade)
+  dependent  PatientUser @relation("DependentRelation", fields: [dependentId], references: [id], onDelete: Cascade)
+
+  @@unique([maintainerId, dependentId])
+}
+
+model DoctorProfile {
+  id                     String         @id @default(uuid())
+  doctorIdCode           String         @unique
+  patientUserId          String         @unique
+  doctorLicense          String         @unique
+  nationalId             String
+  specialty              String
+  degrees                String[]       @default([])
+  achievements           String[]       @default([])
+  bio                    String?
+  area                   String
+  experienceYears        Int            @default(5)
+  defaultConsultationFee Float          @default(1000)
+  profileImage           String?
+  profileVisibility      Json           @default("{\"showDegrees\":true,\"showAchievements\":true,\"showBio\":true,\"showPhoto\":true,\"showExperience\":true,\"customHeadline\":\"\"}")
+  approvalStatus         ApprovalStatus @default(PENDING)
+  dghsNotes              String?
+  approvedAt             DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+
+  patientUser           PatientUser                  @relation(fields: [patientUserId], references: [id], onDelete: Cascade)
+  workspaceAffiliations DoctorWorkspaceAffiliation[]
+  issuedDocuments       VaultDocument[]
+  scannedQrSessions     QrShareSession[]
+  appointments          Appointment[]
+  notifications         Notification[]
+}
+
+model Workspace {
+  id                  String         @id @default(uuid())
+  workspaceCode       String         @unique
+  name                String
+  type                WorkspaceType  @default(HOSPITAL)
+  registrationLicense String         @unique
+  ownerPatientId      String
+  email               String
+  phone               String
+  address             String
+  area                String
+  description         String?
+  logoUrl             String?
+  bannerUrl           String?
+  departments         String[]       @default([])
+  operatingHours      String?        @default("24/7 Emergency & Outpatient 8:00 AM - 10:00 PM")
+  approvalStatus      ApprovalStatus @default(PENDING)
+  dghsNotes           String?
+  approvedAt          DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  owner              PatientUser                  @relation("WorkspaceOwner", fields: [ownerPatientId], references: [id])
+  roles              WorkspaceRole[]
+  members            WorkspaceMember[]
+  auditLogs          WorkspaceAuditLog[]
+  doctorAffiliations DoctorWorkspaceAffiliation[]
+  vaultDocuments     VaultDocument[]
+  qrSessions         QrShareSession[]
+  appointments       Appointment[]
+  packages           HealthPackage[]
+  notifications      Notification[]
+}
+
+model WorkspaceRole {
+  id           String   @id @default(uuid())
+  workspaceId  String
+  name         String
+  description  String?
+  isSystemRole Boolean  @default(false)
+  permissions  String[] @default([])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  workspace   Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  memberRoles WorkspaceMemberRole[]
+
+  @@unique([workspaceId, name])
+}
+
+model WorkspaceMember {
+  id                 String            @id @default(uuid())
+  workspaceId        String
+  patientUserId      String
+  isOwner            Boolean           @default(false)
+  isAdmin            Boolean           @default(false)
+  staffTitle         String?
+  department         String?
+  invitationStatus   StaffInviteStatus @default(PENDING)
+  invitedByPatientId String?
+  joinedAt           DateTime?
+  removedAt          DateTime?
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  workspace           Workspace             @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  patientUser         PatientUser           @relation(fields: [patientUserId], references: [id], onDelete: Cascade)
+  assignedRoles       WorkspaceMemberRole[]
+  auditLogs           WorkspaceAuditLog[]
+  uploadedDocuments   VaultDocument[]
+  managedAppointments Appointment[]
+  createdPackages     HealthPackage[]
+
+  @@unique([workspaceId, patientUserId])
+}
+
+model WorkspaceMemberRole {
+  id         String   @id @default(uuid())
+  memberId   String
+  roleId     String
+  assignedAt DateTime @default(now())
+
+  member WorkspaceMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  role   WorkspaceRole   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, roleId])
+}
+
+model WorkspaceAuditLog {
+  id                 String   @id @default(uuid())
+  workspaceId        String
+  actorMemberId      String?
+  actorPatientId     String
+  actorNameSnapshot  String
+  actorRolesSnapshot String[] @default([])
+  action             String
+  category           String
+  targetType         String?
+  targetId           String?
+  description        String
+  metadata           Json?
+  createdAt          DateTime @default(now())
+
+  workspace    Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  actorMember  WorkspaceMember? @relation(fields: [actorMemberId], references: [id], onDelete: SetNull)
+  actorPatient PatientUser      @relation(fields: [actorPatientId], references: [id], onDelete: Cascade)
+}
+
+model DoctorWorkspaceAffiliation {
+  id              String            @id @default(uuid())
+  doctorId        String
+  workspaceId     String
+  initiatedBy     String            @default("WORKSPACE")
+  statusUpdatedBy String?
+  status          AffiliationStatus @default(PENDING)
+  consultationFee Float             @default(1000)
+  schedule        String            @default("Sun, Tue, Thu: 5:00 PM - 9:00 PM")
+  roomNumber      String?
+  department      String?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  doctor    DoctorProfile @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  workspace Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, workspaceId])
+}
+
+model VaultDocument {
+  id                    String            @id @default(uuid())
+  documentCode          String            @unique
+  patientId             String
+  type                  VaultDocumentType
+  title                 String
+  summary               String?
+  doctorId              String?
+  doctorNameSnapshot    String?
+  workspaceId           String?
+  workspaceNameSnapshot String?
+  uploadedByMemberId    String?
+  qrSessionId           String?
+  structuredData        Json
+  fileUrl               String?
+  isImmutable           Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+
+  patient          PatientUser      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor           DoctorProfile?   @relation(fields: [doctorId], references: [id], onDelete: SetNull)
+  workspace        Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  uploadedByMember WorkspaceMember? @relation(fields: [uploadedByMemberId], references: [id], onDelete: SetNull)
+}
+
+model QrShareSession {
+  id                    String          @id @default(uuid())
+  token                 String          @unique
+  shortCode             String          @unique
+  patientId             String
+  createdByMaintainerId String?
+  selectAll             Boolean         @default(false)
+  documentIds           String[]        @default([])
+  scannedByDoctorId     String?
+  workspaceId           String?
+  status                QrSessionStatus @default(GENERATED)
+  scannedAt             DateTime?
+  expiresAt             DateTime
+  revokedAt             DateTime?
+  createdAt             DateTime        @default(now())
+
+  patient         PatientUser    @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  scannedByDoctor DoctorProfile? @relation(fields: [scannedByDoctorId], references: [id], onDelete: SetNull)
+  workspace       Workspace?     @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+}
+
+model Appointment {
+  id                   String            @id @default(uuid())
+  appointmentCode      String            @unique
+  patientId            String
+  bookedByMaintainerId String?
+  doctorId             String
+  workspaceId          String?
+  appointmentDate      String
+  timeSlot             String
+  reason               String?
+  consultationFee      Float
+  serialNumber         Int?
+  status               AppointmentStatus @default(PENDING)
+  managedByMemberId    String?
+  notes                String?
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+
+  patient         PatientUser      @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  doctor          DoctorProfile    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  workspace       Workspace?       @relation(fields: [workspaceId], references: [id], onDelete: SetNull)
+  managedByMember WorkspaceMember? @relation(fields: [managedByMemberId], references: [id], onDelete: SetNull)
+}
+
+model HealthPackage {
+  id                String   @id @default(uuid())
+  packageCode       String   @unique
+  workspaceId       String
+  title             String
+  tagline           String?
+  description       String
+  price             Float
+  originalPrice     Float?
+  includedTests     String[] @default([])
+  bannerImage       String?
+  durationLabel     String?  @default("Same Day Delivery")
+  isFeatured        Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  createdByMemberId String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  workspace       Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdByMember WorkspaceMember? @relation(fields: [createdByMemberId], references: [id], onDelete: SetNull)
+}
+
+model Notification {
+  id                       String   @id @default(uuid())
+  recipientCentralRegistry Boolean  @default(false)
+  recipientPatientId       String?
+  recipientDoctorId        String?
+  recipientWorkspaceId     String?
+  requiredPermission       String?
+  type                     String
+  title                    String
+  message                  String
+  metadata                 Json?
+  isRead                   Boolean  @default(false)
+  createdAt                DateTime @default(now())
+
+  recipientPatient   PatientUser?   @relation(fields: [recipientPatientId], references: [id], onDelete: Cascade)
+  recipientDoctor    DoctorProfile? @relation(fields: [recipientDoctorId], references: [id], onDelete: Cascade)
+  recipientWorkspace Workspace?     @relation(fields: [recipientWorkspaceId], references: [id], onDelete: Cascade)
+}
+
+model PatientActivityLog {
+  id             String   @id @default(uuid())
+  patientId      String
+  actorPatientId String?
+  action         String
+  description    String
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  patient PatientUser @relation(fields: [patientId], references: [id], onDelete: Cascade)
+}

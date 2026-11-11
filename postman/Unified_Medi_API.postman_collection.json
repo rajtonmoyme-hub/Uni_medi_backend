@@ -1,0 +1,2755 @@
+{
+  "info": {
+    "_postman_id": "5fce615c-ab97-4f38-8048-2a1d54fd51ac",
+    "name": "Unified Health Platform — Complete API Suite",
+    "description": "Comprehensive API Collection for the Unified Health Platform (Central Registry DGHS, Patient Vault & 2h QR Sharing, Doctor QR Stack & Immutable Prescriptions, Hospital Dynamic 24-Permission RBAC, Family Maintainer Proxy, and Notifications).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. System Health & Public Showcase",
+      "item": [
+        {
+          "name": "Health Check",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "health"
+              ],
+              "query": []
+            },
+            "description": "Checks API server and PostgreSQL database connectivity."
+          }
+        },
+        {
+          "name": "Public Showcase (Packages, Hospitals & Doctors)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/showcase",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "showcase"
+              ],
+              "query": []
+            },
+            "description": "Returns featured hospital packages (e.g. Full Body Checkup 10,000 Tk), approved hospitals, and doctors."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Authentication & Multi-Persona Onboarding",
+      "item": [
+        {
+          "name": "Login as Central Registry (DGHS via .env)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"DGHS Login succeeds\", () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (json.token) pm.environment.set(\"dghsToken\", json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dghs@health.gov.bd\",\n  \"password\": \"DGHS@Admin2026!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticates Central Registry (DGHS) using credentials configured in .env."
+          }
+        },
+        {
+          "name": "Login as Patient (Tanvir Ahmed - Family Maintainer)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"Patient Login succeeds\", () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (json.token) pm.environment.set(\"patientToken\", json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"patient@demo.bd\",\n  \"password\": \"Demo@2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticates Patient via email/phone and password."
+          }
+        },
+        {
+          "name": "Login as Doctor (Prof. Dr. Mahbubur Rahman)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"Doctor Login succeeds\", () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (json.token) pm.environment.set(\"doctorToken\", json.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"dr.rahman@demo.bd\",\n  \"password\": \"Demo@2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticates Doctor and returns both Doctor profile and mandatory base Patient account for navbar switching."
+          }
+        },
+        {
+          "name": "Login as Hospital Single Owner (Evercare Hospital)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const json = pm.response.json();",
+                  "pm.test(\"Owner Login succeeds\", () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (json.token) pm.environment.set(\"ownerToken\", json.token);",
+                  "if (json.user && json.user.workspaces && json.user.workspaces[0]) {",
+                  "    pm.environment.set(\"workspaceId\", json.user.workspaces[0].workspaceId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"owner.evercare@demo.bd\",\n  \"password\": \"Demo@2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ],
+              "query": []
+            },
+            "description": "Authenticates Workspace Single Primary Owner with full 24 permissions."
+          }
+        },
+        {
+          "name": "Register New Patient (With Resend SMTP OTP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nadia Rahman\",\n  \"email\": \"nadia.patient@demo.bd\",\n  \"phone\": \"+8801799887766\",\n  \"password\": \"Demo@2026\",\n  \"accountType\": \"NORMAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/patient/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "patient",
+                "register"
+              ],
+              "query": []
+            },
+            "description": "Registers a new Patient account, generates unique_id, and sends 6-digit OTP via Resend SMTP."
+          }
+        },
+        {
+          "name": "Verify Patient OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"nadia.patient@demo.bd\",\n  \"otpCode\": \"{{lastOtpCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/patient/verify-otp",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "patient",
+                "verify-otp"
+              ],
+              "query": []
+            },
+            "description": "Verifies the 6-digit OTP and activates the Patient account."
+          }
+        },
+        {
+          "name": "Register New Doctor (Auto-Creates Linked Patient Account)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Imran Kabir\",\n  \"email\": \"dr.imran@demo.bd\",\n  \"phone\": \"+8801788112233\",\n  \"password\": \"Demo@2026\",\n  \"doctorLicense\": \"BMDC-A-91234\",\n  \"nationalId\": \"1984269489123\",\n  \"specialty\": \"Pediatrics\",\n  \"degrees\": [\n    \"MBBS (DMC)\",\n    \"FCPS (Pediatrics)\"\n  ],\n  \"area\": \"Uttara, Dhaka\",\n  \"defaultConsultationFee\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/doctor/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "doctor",
+                "register"
+              ],
+              "query": []
+            },
+            "description": "Submits Doctor registration to Central Registry (DGHS) and automatically creates the linked base Patient account."
+          }
+        },
+        {
+          "name": "Register New Hospital / Workspace (Option A: Auto-Creates Owner Patient Account)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspaceName\": \"United Specialized Diagnostic & Hospital\",\n  \"type\": \"HOSPITAL\",\n  \"registrationLicense\": \"DGHS-HOSP-2026-777\",\n  \"workspaceEmail\": \"contact@united-demo.bd\",\n  \"workspacePhone\": \"+8801766554433\",\n  \"address\": \"Plot 15, Road 71, Gulshan, Dhaka-1212\",\n  \"area\": \"Gulshan, Dhaka\",\n  \"ownerName\": \"Farhan Ahmed\",\n  \"ownerEmail\": \"owner.united@demo.bd\",\n  \"ownerPhone\": \"+8801766554433\",\n  \"ownerPassword\": \"Demo@2026\",\n  \"ownerNationalId\": \"1976269487777\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/workspace/register",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "workspace",
+                "register"
+              ],
+              "query": []
+            },
+            "description": "Registers a new Hospital/Workspace, auto-creates the Single Primary Owner Patient account, and seeds dynamic RBAC roles."
+          }
+        },
+        {
+          "name": "Get Current Authenticated User Context (/api/auth/me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "me"
+              ],
+              "query": []
+            },
+            "description": "Returns full user context including Patient, Doctor, Workspaces, Combined Permissions, and Family Dependents."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Central Registry (DGHS Governance)",
+      "item": [
+        {
+          "name": "DGHS Overview Dashboard Metrics",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/overview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "overview"
+              ],
+              "query": []
+            },
+            "description": "Returns system-wide KPIs for Patients, Doctors, Workspaces, and Clinical Vault activity."
+          }
+        },
+        {
+          "name": "List All Patients (Search & Filter)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "patients"
+              ],
+              "query": []
+            },
+            "description": "Lists all patients with family maintainer links, vault counts, and status."
+          }
+        },
+        {
+          "name": "Inspect Patient Vault, Activities, Family & Doctor Connections",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/patients/{{samplePatientId}}/inspect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "patients",
+                "{{samplePatientId}}",
+                "inspect"
+              ],
+              "query": []
+            },
+            "description": "Deep inspection of a patient: Report/Prescription Vault, Activity Logs, Child/Old Family Links, and Doctor Consultation Connections."
+          }
+        },
+        {
+          "name": "Disable / Enable Patient Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"reason\": \"DGHS compliance check passed\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/patients/{{samplePatientId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "patients",
+                "{{samplePatientId}}",
+                "status"
+              ],
+              "query": []
+            },
+            "description": "Enables or disables a Patient account."
+          }
+        },
+        {
+          "name": "List All Doctors (Filter by APPROVED, PENDING, DECLINED, DISABLED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/doctors?approvalStatus=APPROVED",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "approvalStatus",
+                  "value": "APPROVED"
+                }
+              ]
+            },
+            "description": "Lists doctors filtered by approval status, including hospital affiliations."
+          }
+        },
+        {
+          "name": "Inspect Doctor (Hospital Connections, Multi-Hospital Fees & Connected Patients)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/doctors/{{sampleDoctorId}}/inspect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "doctors",
+                "{{sampleDoctorId}}",
+                "inspect"
+              ],
+              "query": []
+            },
+            "description": "Inspects a Doctor: BMDC license, multiple consultation fees across hospitals, and connected patients."
+          }
+        },
+        {
+          "name": "Approve / Decline / Disable Doctor Registration",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvalStatus\": \"APPROVED\",\n  \"dghsNotes\": \"Cross-checked BMDC license and National ID.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/doctors/{{sampleDoctorId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "doctors",
+                "{{sampleDoctorId}}",
+                "status"
+              ],
+              "query": []
+            },
+            "description": "Approves, declines, disables, or enables a Doctor registration."
+          }
+        },
+        {
+          "name": "List All Hospitals / Workspaces (Filter by Status & Type)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/workspaces",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "workspaces"
+              ],
+              "query": []
+            },
+            "description": "Lists all registered Hospitals, Clinics, Diagnostic Centers, and Chambers."
+          }
+        },
+        {
+          "name": "Inspect Hospital (Members, Dynamic Roles, Doctors, Patients & Packages)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/workspaces/{{workspaceId}}/inspect",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "workspaces",
+                "{{workspaceId}}",
+                "inspect"
+              ],
+              "query": []
+            },
+            "description": "Deep inspection of a Hospital: Staff members & dynamic roles, audit logs, affiliated doctors, connected patients, and advertised packages."
+          }
+        },
+        {
+          "name": "Approve / Decline / Disable Hospital Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvalStatus\": \"APPROVED\",\n  \"dghsNotes\": \"DGHS hospital inspection verified.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/central-registry/workspaces/{{workspaceId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "central-registry",
+                "workspaces",
+                "{{workspaceId}}",
+                "status"
+              ],
+              "query": []
+            },
+            "description": "Approves, declines, disables, or enables a Hospital/Workspace."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Patient Portal (Vault, 2h QR Sharing, Doctor Search, Family Proxy & Packages)",
+      "item": [
+        {
+          "name": "Patient Dashboard (Featured Packages, Vault, QR, Family)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "dashboard"
+              ],
+              "query": []
+            },
+            "description": "Loads Patient dashboard including featured hospital packages (e.g. Full Body Checkup 10,000 Tk), recent vault items, and family accounts."
+          }
+        },
+        {
+          "name": "Patient Report & Prescription Vault (Sort by Doctor or Workspace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault?sortBy=date_desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "date_desc"
+                }
+              ]
+            },
+            "description": "Lists all prescriptions, lab reports, and billing docs in the Patient Vault with sorting by Doctor name or Workspace name."
+          }
+        },
+        {
+          "name": "Generate 2-Hour Temporary QR Code for Selected Vault Docs",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selectAll\": true,\n  \"documentIds\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault/qr-generate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault",
+                "qr-generate"
+              ],
+              "query": []
+            },
+            "description": "Generates a 2-hour temporary QR code (plus 6-character pairing code) for a Doctor to scan."
+          }
+        },
+        {
+          "name": "List Active & Past QR Sessions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault/qr-sessions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault",
+                "qr-sessions"
+              ],
+              "query": []
+            },
+            "description": "Lists all QR share sessions and their remaining time or scan status."
+          }
+        },
+        {
+          "name": "Revoke Doctor Access to Shared QR Session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault/qr-sessions/{{qrSessionId}}/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault",
+                "qr-sessions",
+                "{{qrSessionId}}",
+                "revoke"
+              ],
+              "query": []
+            },
+            "description": "Immediately revokes a shared QR code so the Doctor can no longer view the patient documents."
+          }
+        },
+        {
+          "name": "Find a Doctor (Search by Name, Workspace, Specialty, Area)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/doctors?specialty=Cardiology&area=Dhaka",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "doctors"
+              ],
+              "query": [
+                {
+                  "key": "specialty",
+                  "value": "Cardiology"
+                },
+                {
+                  "key": "area",
+                  "value": "Dhaka"
+                }
+              ]
+            },
+            "description": "Searches approved doctors by name, workspace, specialty (Orthopedics, Gynecology, Cardiology), and area."
+          }
+        },
+        {
+          "name": "Apply for Appointment with Doctor at Chosen Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"doctorId\": \"{{sampleDoctorId}}\",\n  \"workspaceId\": \"{{workspaceId}}\",\n  \"appointmentDate\": \"2026-11-20\",\n  \"timeSlot\": \"07:00 PM\",\n  \"reason\": \"Cardiac checkup and ECG review\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/appointments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "appointments"
+              ],
+              "query": []
+            },
+            "description": "Books an appointment at a specific affiliated workspace (confirmed by Workspace Staff)."
+          }
+        },
+        {
+          "name": "Search & Sort Registered Hospitals & Packages",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/workspaces?sortBy=name_asc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "workspaces"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "name_asc"
+                }
+              ]
+            },
+            "description": "Returns top promotional package cards and searchable/sortable hospital directory."
+          }
+        },
+        {
+          "name": "Update Patient Profile (Multiple Emails/Numbers, Avatar, Password)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Tanvir Ahmed\",\n  \"secondaryEmails\": [\n    \"tanvir.personal@gmail.com\",\n    \"tanvir.work@bd.org\"\n  ],\n  \"secondaryPhones\": [\n    \"+8801811000001\",\n    \"+8801911000002\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "profile"
+              ],
+              "query": []
+            },
+            "description": "Updates patient profile including multiple emails and phone numbers."
+          }
+        },
+        {
+          "name": "Family Management — View Child & Senior Dependents",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/family",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "family"
+              ],
+              "query": []
+            },
+            "description": "Returns Child and Senior (Old) family accounts linked to this Maintainer."
+          }
+        },
+        {
+          "name": "Family Management — Invite Child / Old Account or Maintainer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetIdentifier\": \"PAT-2026-100002\",\n  \"direction\": \"AS_MAINTAINER\",\n  \"relationshipType\": \"CHILD\",\n  \"relationshipLabel\": \"Son\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/family/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "family",
+                "invite"
+              ],
+              "query": []
+            },
+            "description": "Establishes a family maintainer invitation with a Child or Senior patient account."
+          }
+        },
+        {
+          "name": "Family Maintainer Proxy — Access Dependent Vault via x-acting-patient-id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              },
+              {
+                "key": "x-acting-patient-id",
+                "value": "{{childPatientId}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault"
+              ],
+              "query": []
+            },
+            "description": "Demonstrates full Maintainer proxy access to a connected Child/Senior account."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Doctor Portal (QR Scanner, Stacked Patient Queue, Immutable Prescriptions & Affiliations)",
+      "item": [
+        {
+          "name": "Doctor Dashboard & Active QR Queue Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "dashboard"
+              ],
+              "query": []
+            },
+            "description": "Returns Doctor profile status, active QR queue stack, and recent prescription history."
+          }
+        },
+        {
+          "name": "Scan Patient QR Code (Stacks Most Recent Patient at Top)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrInput\": \"QR-DEMO99\",\n  \"workspaceId\": \"{{workspaceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/qr/scan",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "qr",
+                "scan"
+              ],
+              "query": []
+            },
+            "description": "Scans a Patient 2-hour QR code and pushes the patient to the top of the Doctor active consultation queue."
+          }
+        },
+        {
+          "name": "Get Stacked Active QR Patient Queue (Ordered by Most Recent Scan)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/qr/queue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "qr",
+                "queue"
+              ],
+              "query": []
+            },
+            "description": "Returns all active scanned patients stacked with the most recent scan at the top, including shared Vault documents."
+          }
+        },
+        {
+          "name": "Issue Immutable Prescription (Strictly Requires Active Scanned QR Session)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"qrSessionId\": \"{{activeQrSessionId}}\",\n  \"workspaceId\": \"{{workspaceId}}\",\n  \"diagnosis\": \"Seasonal Viral Fever & Pharyngitis\",\n  \"chiefComplaints\": \"Low-grade fever and sore throat for 3 days\",\n  \"medications\": [\n    {\n      \"name\": \"Tab. Napa 500mg\",\n      \"dosage\": \"1 + 1 + 1\",\n      \"duration\": \"5 Days\",\n      \"instruction\": \"After meal\"\n    }\n  ],\n  \"advice\": \"Warm saline gargle 3 times daily and plenty of fluids.\",\n  \"followUpDate\": \"2026-11-25\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/prescriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "prescriptions"
+              ],
+              "query": []
+            },
+            "description": "Issues an immutable digital prescription strictly after scanning a Patient QR code, and notifies the Patient."
+          }
+        },
+        {
+          "name": "Verify Prescription Immutability (Returns 403 Forbidden)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"diagnosis\": \"Attempted modification after sending\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/prescriptions/{{prescriptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "prescriptions",
+                "{{prescriptionId}}"
+              ],
+              "query": []
+            },
+            "description": "Verifies that issued prescriptions cannot be edited or mutated after sending (returns 403 PRESCRIPTION_IMMUTABLE)."
+          }
+        },
+        {
+          "name": "Doctor Lifetime Patient & Prescription History (Sort by Workspace or Date)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/history?sortBy=date_desc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "sortBy",
+                  "value": "date_desc"
+                }
+              ]
+            },
+            "description": "Returns lifetime history of patients and prescriptions sent by the Doctor, sortable by workspace or date."
+          }
+        },
+        {
+          "name": "Doctor — Send Affiliation Request to Hospital / Workspace",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspaceId\": \"{{workspaceId}}\",\n  \"consultationFee\": 1500,\n  \"schedule\": \"Sun, Tue, Thu: 5:00 PM - 9:00 PM\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/affiliations/request",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "affiliations",
+                "request"
+              ],
+              "query": []
+            },
+            "description": "Sends a bidirectional affiliation invitation from Doctor to Workspace."
+          }
+        },
+        {
+          "name": "Customize Doctor Public Profile & Visibility Toggles",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{doctorToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bio\": \"Senior Consultant Interventional Cardiologist.\",\n  \"profileVisibility\": {\n    \"showDegrees\": true,\n    \"showAchievements\": true,\n    \"showBio\": true,\n    \"showPhoto\": true,\n    \"showExperience\": true,\n    \"customHeadline\": \"Evening Cardiac Chamber Open\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/doctor/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "doctor",
+                "profile"
+              ],
+              "query": []
+            },
+            "description": "Updates Doctor profile and customizes which fields are visible to patients."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Workspace / Hospital Portal (Dynamic 24-Permission RBAC, Staff, Audit Logs, Lab, Billing & Packages)",
+      "item": [
+        {
+          "name": "Get 24-Permission Catalog",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/permission-catalog",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "permission-catalog"
+              ],
+              "query": []
+            },
+            "description": "Returns the 24 granular permissions across 7 operational hospital domains."
+          }
+        },
+        {
+          "name": "Get Workspace Context & Member Combined Permissions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/context",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "context"
+              ],
+              "query": []
+            },
+            "description": "Returns workspace details, member assigned roles, combined permissions, and role-scoped KPIs."
+          }
+        },
+        {
+          "name": "Create Custom Dynamic Role (roles.manage)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Senior Radiology & Lab Supervisor\",\n  \"description\": \"Can view, upload, and verify diagnostic reports.\",\n  \"permissions\": [\n    \"patients.lookup\",\n    \"reports.view\",\n    \"reports.upload\",\n    \"reports.verify\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/roles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "roles"
+              ],
+              "query": []
+            },
+            "description": "Creates a custom dynamic role with selected permissions."
+          }
+        },
+        {
+          "name": "Invite Staff Member with Multiple Roles (staff.invite)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientIdentifier\": \"PAT-2026-100001\",\n  \"roleIds\": [\n    \"{{roleId}}\"\n  ],\n  \"staffTitle\": \"Clinical Coordinator\",\n  \"department\": \"Outpatient Operations\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/staff/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "staff",
+                "invite"
+              ],
+              "query": []
+            },
+            "description": "Invites a Patient account to join the workspace staff with one or multiple dynamic roles."
+          }
+        },
+        {
+          "name": "View Immutable Staff Performance & Audit Logs (Includes Removed Staff)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/audit-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "audit-logs"
+              ],
+              "query": []
+            },
+            "description": "Returns all staff performance counters and immutable historical logs, including removed staff members."
+          }
+        },
+        {
+          "name": "Upload Diagnostic Lab Report to Patient Vault (reports.upload)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientIdentifier\": \"PAT-2026-100001\",\n  \"title\": \"Serum Creatinine & Electrolytes Panel\",\n  \"testCategory\": \"Renal Biochemistry\",\n  \"parameters\": [\n    {\n      \"name\": \"Serum Creatinine\",\n      \"result\": \"0.92 mg/dL\",\n      \"referenceRange\": \"0.70 - 1.30 mg/dL\",\n      \"flag\": \"NORMAL\"\n    }\n  ],\n  \"conclusion\": \"Normal renal function.\",\n  \"verified\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "reports"
+              ],
+              "query": []
+            },
+            "description": "Uploads a diagnostic report directly to the Patient Vault, logs staff performance, and notifies the Patient."
+          }
+        },
+        {
+          "name": "Create Patient Billing Invoice & Dispatch to Vault (billing.create)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientIdentifier\": \"PAT-2026-100001\",\n  \"title\": \"Diagnostic Test Invoice\",\n  \"items\": [\n    {\n      \"description\": \"Serum Creatinine & Electrolytes Panel\",\n      \"qty\": 1,\n      \"amount\": 1200\n    }\n  ],\n  \"discount\": 100,\n  \"paymentStatus\": \"PAID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/billing",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "billing"
+              ],
+              "query": []
+            },
+            "description": "Creates a billing document in the Patient Vault, logs staff performance, and notifies the Patient."
+          }
+        },
+        {
+          "name": "Publish Promotional Health Package (e.g. Full Body Checkup 10,000 Tk)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Full Body Checkup — Executive Package\",\n  \"tagline\": \"Full Body Checkup Only 10,000 Tk\",\n  \"description\": \"Complete preventive health checkup.\",\n  \"price\": 10000,\n  \"originalPrice\": 14500,\n  \"includedTests\": [\n    \"CBC\",\n    \"Lipid Profile\",\n    \"ECG\",\n    \"Echo\",\n    \"HbA1c\"\n  ],\n  \"isFeatured\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/packages",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "packages"
+              ],
+              "query": []
+            },
+            "description": "Publishes a promotional health package advertised on the Patient Dashboard."
+          }
+        },
+        {
+          "name": "Workspace Staff Approves Patient Appointment (appointments.manage)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPROVED\",\n  \"serialNumber\": 5,\n  \"notes\": \"Confirmed by Workspace Front Desk.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "appointments",
+                "{{appointmentId}}"
+              ],
+              "query": []
+            },
+            "description": "Approves and schedules a patient appointment request and notifies the patient."
+          }
+        },
+        {
+          "name": "Transfer Single Primary Ownership (Owner Only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ownerToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"targetMemberId\": \"{{adminMemberId}}\",\n  \"password\": \"Demo@2026\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/workspaces/{{workspaceId}}/transfer-ownership",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "workspaces",
+                "{{workspaceId}}",
+                "transfer-ownership"
+              ],
+              "query": []
+            },
+            "description": "Transfers Single Primary Ownership to another accepted member/Admin with password verification."
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Permission-Scoped & Central Registry Notifications",
+      "item": [
+        {
+          "name": "Get Notifications (Patient / Doctor / Permission-Filtered Workspace)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?persona=PATIENT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "persona",
+                  "value": "PATIENT"
+                }
+              ]
+            },
+            "description": "Returns notifications for the active persona, filtering workspace notifications strictly by the member combined permissions."
+          }
+        },
+        {
+          "name": "Get Central Registry (DGHS) Governance Notifications",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications?persona=CENTRAL_REGISTRY",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications"
+              ],
+              "query": [
+                {
+                  "key": "persona",
+                  "value": "CENTRAL_REGISTRY"
+                }
+              ]
+            },
+            "description": "Returns persistent DGHS governance notifications for pending Doctor and Facility applications."
+          }
+        },
+        {
+          "name": "Mark All Notifications Read",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{dghsToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"persona\": \"CENTRAL_REGISTRY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                "read-all"
+              ],
+              "query": []
+            },
+            "description": "Marks all notifications as read for the active persona (Patient, Doctor, Workspace, or Central Registry)."
+          }
+        }
+      ]
+    }
+  ]
+}
