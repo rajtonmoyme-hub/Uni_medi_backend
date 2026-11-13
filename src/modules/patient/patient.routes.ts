@@ -4,6 +4,10 @@ import crypto from 'crypto';
 import QRCode from 'qrcode';
 import { prisma } from '../../config/prisma';
 import { authenticateToken, qrRateLimiter } from '../../middleware/security';
+import {
+  parseScheduleAndSlots,
+  getIndependentChamberConfig,
+} from '../../utils/scheduleSlots';
 
 export const patientRouter = Router();
 
@@ -65,11 +69,13 @@ patientRouter.get(
         patient,
         featuredPackages,
         recentVaultDocs,
+        allVaultDocsMeta,
         upcomingAppointments,
         activeQrSessions,
         familyDependents,
         familyMaintainers,
         pendingStaffInvites,
+        recentActivityLogs,
       ] = await Promise.all([
         prisma.patientUser.findUnique({
           where: { id: patientId },
@@ -90,6 +96,7 @@ patientRouter.get(
             address: true,
             emergencyContact: true,
             status: true,
+            isOtpVerified: true,
             createdAt: true,
           },
         }),
@@ -118,7 +125,7 @@ patientRouter.get(
         prisma.vaultDocument.findMany({
           where: { patientId },
           orderBy: { createdAt: 'desc' },
-          take: 6,
+          take: 8,
           include: {
             doctor: {
               include: {
@@ -130,10 +137,30 @@ patientRouter.get(
             },
           },
         }),
+        prisma.vaultDocument.findMany({
+          where: { patientId },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            documentCode: true,
+            type: true,
+            title: true,
+            doctorNameSnapshot: true,
+            workspaceNameSnapshot: true,
+            structuredData: true,
+            createdAt: true,
+            doctor: {
+              select: {
+                specialty: true,
+                patientUser: { select: { name: true } },
+              },
+            },
+          },
+        }),
         prisma.appointment.findMany({
           where: { patientId },
           orderBy: { createdAt: 'desc' },
-          take: 6,
+          take: 8,
           include: {
             doctor: {
               include: {
@@ -172,8 +199,16 @@ patientRouter.get(
                 phone: true,
                 accountType: true,
                 bloodGroup: true,
+                gender: true,
                 dateOfBirth: true,
+                profileAvatar: true,
                 status: true,
+                _count: {
+                  select: {
+                    vaultDocuments: true,
+                    appointments: true,
+                  },
+                },
               },
             },
           },
@@ -206,18 +241,114 @@ patientRouter.get(
             },
           },
         }),
+        prisma.patientActivityLog.findMany({
+          where: { patientId },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        }),
       ]);
+
+      const prescriptionsCount = allVaultDocsMeta.filter(
+        (d) => d.type === 'PRESCRIPTION'
+      ).length;
+      const labReportsCount = allVaultDocsMeta.filter(
+        (d) => d.type === 'LAB_REPORT'
+      ).length;
+      const billingDocsCount = allVaultDocsMeta.filter(
+        (d) => d.type === 'BILLING_DOC'
+      ).length;
+
+      const activeMedications: Array<{
+        docId: string;
+        documentCode: string;
+        name: string;
+        dosage: string;
+        duration: string;
+        instruction: string;
+        diagnosis: string;
+        doctorName: string;
+        followUpDate?: string | null;
+        issuedAt: Date;
+      }> = [];
+
+      for (const doc of allVaultDocsMeta) {
+        if (doc.type !== 'PRESCRIPTION') continue;
+        const sd = (doc.structuredData as Record<string, any>) || {};
+        const meds = Array.isArray(sd.medications) ? sd.medications : [];
+        const docName =
+          doc.doctor?.patientUser?.name ||
+          doc.doctorNameSnapshot ||
+          'Attending Physician';
+        for (const m of meds) {
+          if (m && m.name && activeMedications.length < 8) {
+            activeMedications.push({
+              docId: doc.id,
+              documentCode: doc.documentCode,
+              name: String(m.name),
+              dosage: String(m.dosage || 'As directed'),
+              duration: String(m.duration || 'Ongoing'),
+              instruction: String(m.instruction || ''),
+              diagnosis: String(sd.diagnosis || doc.title || 'Consultation'),
+              doctorName: docName,
+              followUpDate: sd.followUpDate || null,
+              issuedAt: doc.createdAt,
+            });
+          }
+        }
+      }
+
+      const recentLabHighlights: Array<{
+        docId: string;
+        documentCode: string;
+        testTitle: string;
+        parameterName: string;
+        result: string;
+        referenceRange: string;
+        flag: string;
+        facilityName: string;
+        issuedAt: Date;
+      }> = [];
+
+      for (const doc of allVaultDocsMeta) {
+        if (doc.type !== 'LAB_REPORT') continue;
+        const sd = (doc.structuredData as Record<string, any>) || {};
+        const params = Array.isArray(sd.parameters) ? sd.parameters : [];
+        for (const p of params) {
+          if (p && p.name && recentLabHighlights.length < 6) {
+            recentLabHighlights.push({
+              docId: doc.id,
+              documentCode: doc.documentCode,
+              testTitle: doc.title,
+              parameterName: String(p.name),
+              result: String(p.result || '—'),
+              referenceRange: String(p.referenceRange || '—'),
+              flag: String(p.flag || 'NORMAL'),
+              facilityName: doc.workspaceNameSnapshot || 'Diagnostic Lab',
+              issuedAt: doc.createdAt,
+            });
+          }
+        }
+      }
 
       res.json({
         isProxySession: resolved.isProxy,
         patient,
         featuredPackages,
         recentVaultDocs,
+        vaultSummary: {
+          total: allVaultDocsMeta.length,
+          prescriptions: prescriptionsCount,
+          labReports: labReportsCount,
+          billingDocs: billingDocsCount,
+          activeMedications,
+          recentLabHighlights,
+        },
         upcomingAppointments,
         activeQrSessions,
         familyDependents,
         familyMaintainers,
         pendingStaffInvites,
+        recentActivityLogs,
       });
     } catch (err: any) {
       res.status(500).json({
@@ -239,7 +370,13 @@ patientRouter.get(
         return;
       }
 
-      const { doctorName, workspaceName, type, sortBy = 'date_desc' } = req.query;
+      const {
+        search,
+        doctorName,
+        workspaceName,
+        type,
+        sortBy = 'date_desc',
+      } = req.query;
 
       const where: any = {
         patientId: resolved.targetPatientId,
@@ -252,14 +389,35 @@ patientRouter.get(
         where.type = String(type);
       }
 
+      if (search && String(search).trim()) {
+        const sq = String(search).trim();
+        where.AND = [
+          ...(where.AND || []),
+          {
+            OR: [
+              { title: { contains: sq, mode: 'insensitive' } },
+              { summary: { contains: sq, mode: 'insensitive' } },
+              { documentCode: { contains: sq, mode: 'insensitive' } },
+              { doctorNameSnapshot: { contains: sq, mode: 'insensitive' } },
+              { workspaceNameSnapshot: { contains: sq, mode: 'insensitive' } },
+            ],
+          },
+        ];
+      }
+
       if (doctorName && String(doctorName).trim()) {
         const dq = String(doctorName).trim();
-        where.OR = [
-          { doctorNameSnapshot: { contains: dq, mode: 'insensitive' } },
+        where.AND = [
+          ...(where.AND || []),
           {
-            doctor: {
-              patientUser: { name: { contains: dq, mode: 'insensitive' } },
-            },
+            OR: [
+              { doctorNameSnapshot: { contains: dq, mode: 'insensitive' } },
+              {
+                doctor: {
+                  patientUser: { name: { contains: dq, mode: 'insensitive' } },
+                },
+              },
+            ],
           },
         ];
       }
@@ -308,6 +466,92 @@ patientRouter.get(
       res.json({ documents });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load Vault documents' });
+    }
+  }
+);
+
+// 2b. Patient Self-Upload Historical or External Clinical Document to Vault
+patientRouter.post(
+  '/vault/self-upload',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const resolved = await resolveTargetPatientId(req);
+      if (resolved.error) {
+        res.status(403).json({ error: resolved.error });
+        return;
+      }
+
+      const {
+        type = 'PRESCRIPTION',
+        title,
+        summary,
+        doctorNameSnapshot,
+        workspaceNameSnapshot,
+        structuredData = {},
+        fileUrl,
+      } = req.body;
+
+      if (!title || !String(title).trim()) {
+        res.status(400).json({ error: 'Document title is required.' });
+        return;
+      }
+
+      const validType = ['PRESCRIPTION', 'LAB_REPORT', 'BILLING_DOC'].includes(
+        String(type)
+      )
+        ? (String(type) as 'PRESCRIPTION' | 'LAB_REPORT' | 'BILLING_DOC')
+        : 'PRESCRIPTION';
+
+      const prefix =
+        validType === 'PRESCRIPTION'
+          ? 'RX'
+          : validType === 'LAB_REPORT'
+            ? 'LAB'
+            : 'INV';
+      const documentCode = `${prefix}-EXT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+      const document = await prisma.vaultDocument.create({
+        data: {
+          documentCode,
+          patientId: resolved.targetPatientId,
+          type: validType,
+          title: String(title).trim(),
+          summary: summary ? String(summary).trim() : null,
+          doctorNameSnapshot: doctorNameSnapshot
+            ? String(doctorNameSnapshot).trim()
+            : 'External Physician',
+          workspaceNameSnapshot: workspaceNameSnapshot
+            ? String(workspaceNameSnapshot).trim()
+            : 'Patient Self-Uploaded Record',
+          structuredData: {
+            ...(typeof structuredData === 'object' && structuredData !== null
+              ? structuredData
+              : {}),
+            uploadedByPatient: true,
+          },
+          fileUrl: fileUrl ? String(fileUrl) : null,
+          isImmutable: false,
+        },
+      });
+
+      await prisma.patientActivityLog.create({
+        data: {
+          patientId: resolved.targetPatientId,
+          actorPatientId: req.user?.patientId,
+          action: 'VAULT_SELF_UPLOAD',
+          description: `Uploaded external ${validType.replace('_', ' ').toLowerCase()} (${documentCode}: ${document.title}) to Vault`,
+        },
+      });
+
+      res.status(201).json({
+        message: 'External medical record added to your Vault.',
+        document,
+      });
+    } catch (err: any) {
+      res.status(500).json({
+        error: 'Failed to upload medical record to Vault',
+        details: err?.message,
+      });
     }
   }
 );
@@ -605,6 +849,8 @@ patientRouter.get(
           showExperience: true,
         };
 
+        const indepConfig = getIndependentChamberConfig(vis);
+
         return {
           id: doc.id,
           doctorIdCode: doc.doctorIdCode,
@@ -612,6 +858,8 @@ patientRouter.get(
           specialty: doc.specialty,
           area: doc.area,
           defaultConsultationFee: doc.defaultConsultationFee,
+          independentSchedule: indepConfig.independentSchedule,
+          independentSlots: indepConfig.independentSlots,
           degrees: vis.showDegrees !== false ? doc.degrees : [],
           achievements: vis.showAchievements !== false ? doc.achievements : [],
           bio: vis.showBio !== false ? doc.bio : null,
@@ -622,18 +870,23 @@ patientRouter.get(
               ? doc.profileImage || doc.patientUser.profileAvatar
               : null,
           customHeadline: vis.customHeadline || null,
-          affiliations: doc.workspaceAffiliations.map((aff) => ({
-            affiliationId: aff.id,
-            workspaceId: aff.workspace.id,
-            workspaceCode: aff.workspace.workspaceCode,
-            workspaceName: aff.workspace.name,
-            workspaceType: aff.workspace.type,
-            area: aff.workspace.area,
-            address: aff.workspace.address,
-            consultationFee: aff.consultationFee,
-            schedule: aff.schedule,
-            roomNumber: aff.roomNumber,
-          })),
+          affiliations: doc.workspaceAffiliations.map((aff) => {
+            const parsed = parseScheduleAndSlots(aff.schedule);
+            return {
+              affiliationId: aff.id,
+              workspaceId: aff.workspace.id,
+              workspaceCode: aff.workspace.workspaceCode,
+              workspaceName: aff.workspace.name,
+              workspaceType: aff.workspace.type,
+              area: aff.workspace.area,
+              address: aff.workspace.address,
+              consultationFee: aff.consultationFee,
+              schedule: parsed.scheduleLabel,
+              rawSchedule: aff.schedule,
+              availableSlots: parsed.availableSlots,
+              roomNumber: aff.roomNumber,
+            };
+          }),
         };
       });
 
@@ -679,6 +932,7 @@ patientRouter.post(
       let doctorName = 'Doctor';
       let doctorPatientUserId: string | null = null;
       let facilityLabel = 'Independent Personal Chamber';
+      let configuredSlots: string[] = [];
 
       if (isIndependent) {
         const doctor = await prisma.doctorProfile.findFirst({
@@ -698,6 +952,10 @@ patientRouter.post(
           return;
         }
 
+        const indepConfig = getIndependentChamberConfig(
+          doctor.profileVisibility
+        );
+        configuredSlots = indepConfig.independentSlots;
         targetWorkspaceId = null;
         targetFee = doctor.defaultConsultationFee || 1000;
         doctorName = doctor.patientUser.name;
@@ -725,11 +983,26 @@ patientRouter.post(
           return;
         }
 
+        const parsed = parseScheduleAndSlots(affiliation.schedule);
+        configuredSlots = parsed.availableSlots;
         targetWorkspaceId = affiliation.workspaceId;
         targetFee = affiliation.consultationFee;
         doctorName = affiliation.doctor.patientUser.name;
         doctorPatientUserId = affiliation.doctor.patientUser.id;
         facilityLabel = affiliation.workspace.name;
+      }
+
+      const requestedSlotClean = String(timeSlot).trim();
+      const matchedSlot = configuredSlots.find(
+        (s) => s.toLowerCase() === requestedSlotClean.toLowerCase()
+      );
+      if (!matchedSlot) {
+        res.status(400).json({
+          error: `Selected time slot "${requestedSlotClean}" is not configured for ${facilityLabel}. Please choose from the configured slots: ${configuredSlots.join(', ')}.`,
+          code: 'SLOT_NOT_AVAILABLE',
+          availableSlots: configuredSlots,
+        });
+        return;
       }
 
       const appointmentCode = `APT-2026-${Math.floor(100000 + Math.random() * 900000)}`;
@@ -742,7 +1015,7 @@ patientRouter.post(
           doctorId: String(doctorId),
           workspaceId: targetWorkspaceId,
           appointmentDate: String(appointmentDate),
-          timeSlot: String(timeSlot),
+          timeSlot: matchedSlot,
           reason: reason || 'General Consultation',
           consultationFee: targetFee,
           status: 'PENDING',
@@ -841,6 +1114,117 @@ patientRouter.get(
       res.json({ appointments });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load appointments' });
+    }
+  }
+);
+
+// 8b. Cancel a Pending or Approved Appointment
+patientRouter.patch(
+  '/appointments/:id/cancel',
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const resolved = await resolveTargetPatientId(req);
+      if (resolved.error) {
+        res.status(403).json({ error: resolved.error });
+        return;
+      }
+
+      const appointment = await prisma.appointment.findFirst({
+        where: {
+          id: String(req.params.id),
+          patientId: resolved.targetPatientId,
+        },
+        include: {
+          doctor: {
+            include: { patientUser: { select: { id: true, name: true } } },
+          },
+          workspace: {
+            select: { id: true, name: true },
+          },
+        },
+      });
+
+      if (!appointment) {
+        res.status(404).json({ error: 'Appointment not found.' });
+        return;
+      }
+
+      if (['COMPLETED', 'CANCELLED'].includes(appointment.status)) {
+        res.status(400).json({
+          error: `Cannot cancel an appointment that is already ${appointment.status.toLowerCase()}.`,
+        });
+        return;
+      }
+
+      const updated = await prisma.appointment.update({
+        where: { id: appointment.id },
+        data: {
+          status: 'CANCELLED',
+          notes: req.body?.reason
+            ? `Cancelled by patient: ${String(req.body.reason).trim()}`
+            : appointment.notes,
+        },
+        include: {
+          doctor: {
+            include: { patientUser: { select: { name: true, phone: true } } },
+          },
+          workspace: {
+            select: {
+              id: true,
+              workspaceCode: true,
+              name: true,
+              type: true,
+              area: true,
+              address: true,
+              phone: true,
+            },
+          },
+        },
+      });
+
+      const docName = appointment.doctor?.patientUser?.name || 'Doctor';
+      const facilityName =
+        appointment.workspace?.name || 'Independent Personal Chamber';
+
+      await prisma.patientActivityLog.create({
+        data: {
+          patientId: resolved.targetPatientId,
+          actorPatientId: req.user?.patientId,
+          action: 'APPOINTMENT_CANCELLED',
+          description: `Cancelled appointment (${appointment.appointmentCode}) with ${docName} at ${facilityName}`,
+        },
+      });
+
+      if (appointment.workspaceId) {
+        await prisma.notification.create({
+          data: {
+            recipientWorkspaceId: appointment.workspaceId,
+            requiredPermission: 'appointments.manage',
+            type: 'APPOINTMENT_UPDATE',
+            title: 'Patient Cancelled Appointment',
+            message: `Appointment ${appointment.appointmentCode} for ${docName} on ${appointment.appointmentDate} (${appointment.timeSlot}) was cancelled by the patient.`,
+            metadata: { appointmentId: appointment.id, status: 'CANCELLED' },
+          },
+        });
+      } else if (appointment.doctor?.patientUser?.id) {
+        await prisma.notification.create({
+          data: {
+            recipientPatientId: appointment.doctor.patientUser.id,
+            recipientDoctorId: appointment.doctorId,
+            type: 'APPOINTMENT_UPDATE',
+            title: 'Patient Cancelled Independent Appointment',
+            message: `Appointment ${appointment.appointmentCode} on ${appointment.appointmentDate} (${appointment.timeSlot}) was cancelled by the patient.`,
+            metadata: { appointmentId: appointment.id, status: 'CANCELLED' },
+          },
+        });
+      }
+
+      res.json({
+        message: `Appointment ${appointment.appointmentCode} has been cancelled.`,
+        appointment: updated,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: 'Failed to cancel appointment' });
     }
   }
 );

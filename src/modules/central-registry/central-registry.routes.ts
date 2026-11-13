@@ -96,7 +96,13 @@ centralRegistryRouter.get(
           where: { approvalStatus: 'PENDING' },
           include: {
             patientUser: {
-              select: { name: true, email: true, phone: true, uniqueId: true },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                uniqueId: true,
+              },
             },
           },
           orderBy: { createdAt: 'desc' },
@@ -105,7 +111,13 @@ centralRegistryRouter.get(
           where: { approvalStatus: 'PENDING' },
           include: {
             owner: {
-              select: { name: true, email: true, phone: true, uniqueId: true },
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                phone: true,
+                uniqueId: true,
+              },
             },
           },
           orderBy: { createdAt: 'desc' },
@@ -164,6 +176,9 @@ centralRegistryRouter.get(
                 vaultDocuments: true,
                 packages: true,
               },
+            },
+            packages: {
+              orderBy: { price: 'asc' },
             },
             appointments: { select: { patientId: true } },
             vaultDocuments: { select: { patientId: true } },
@@ -242,12 +257,19 @@ centralRegistryRouter.get(
             doctorName: doc.doctor.patientUser?.name || 'Doctor',
             specialty: doc.doctor.specialty,
             facilities: new Set<string>(),
+            facilityMap: new Map<string, { id: string; name: string }>(),
             prescriptionsCount: 0,
             appointmentsCount: 0,
             lastActivityAt: doc.createdAt,
           };
           row.prescriptionsCount += 1;
-          if (doc.workspace?.name) row.facilities.add(doc.workspace.name);
+          if (doc.workspace?.name) {
+            row.facilities.add(doc.workspace.name);
+            row.facilityMap.set(doc.workspace.id, {
+              id: doc.workspace.id,
+              name: doc.workspace.name,
+            });
+          }
           pdMap.set(key, row);
         }
       }
@@ -265,20 +287,30 @@ centralRegistryRouter.get(
             doctorName: apt.doctor.patientUser?.name || 'Doctor',
             specialty: apt.doctor.specialty,
             facilities: new Set<string>(),
+            facilityMap: new Map<string, { id: string; name: string }>(),
             prescriptionsCount: 0,
             appointmentsCount: 0,
             lastActivityAt: apt.createdAt,
           };
           row.appointmentsCount += 1;
-          if (apt.workspace?.name) row.facilities.add(apt.workspace.name);
+          if (apt.workspace?.name) {
+            row.facilities.add(apt.workspace.name);
+            row.facilityMap.set(apt.workspace.id, {
+              id: apt.workspace.id,
+              name: apt.workspace.name,
+            });
+          }
           pdMap.set(key, row);
         }
       }
 
-      const patientDoctorMatrix = Array.from(pdMap.values()).map((r) => ({
-        ...r,
-        facilities: Array.from(r.facilities),
-      }));
+      const patientDoctorMatrix = Array.from(pdMap.values()).map(
+        ({ facilityMap, facilities, ...rest }) => ({
+          ...rest,
+          facilities: Array.from(facilities),
+          facilityLinks: Array.from(facilityMap.values()),
+        })
+      );
 
       const hospitalDoctorMatrix = allAffiliations.map((aff) => ({
         affiliationId: aff.id,
@@ -296,6 +328,20 @@ centralRegistryRouter.get(
         area: aff.workspace.area,
       }));
 
+      const publishedPackages = allWorkspacesSummary.flatMap((ws) =>
+        (ws.packages || []).map((pkg) => ({
+          ...pkg,
+          workspace: {
+            id: ws.id,
+            workspaceCode: ws.workspaceCode,
+            name: ws.name,
+            type: ws.type,
+            area: ws.area,
+            approvalStatus: ws.approvalStatus,
+          },
+        }))
+      );
+
       const hospitalEcosystemSummary = allWorkspacesSummary.map((ws) => {
         const uniquePatientIds = new Set<string>();
         ws.appointments.forEach((a) => uniquePatientIds.add(a.patientId));
@@ -311,6 +357,7 @@ centralRegistryRouter.get(
           connectedPatientsCount: uniquePatientIds.size,
           staffCount: ws._count.members,
           packagesCount: ws._count.packages,
+          packages: ws.packages || [],
           recordsCount: ws._count.vaultDocuments,
           appointmentsCount: ws._count.appointments,
         };
@@ -358,6 +405,7 @@ centralRegistryRouter.get(
           hospitalDoctorMatrix,
           patientDoctorMatrix,
           hospitalEcosystemSummary,
+          publishedPackages,
           familyLinks: allFamilyLinks,
         },
         recentPatients,

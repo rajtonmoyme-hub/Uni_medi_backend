@@ -5,6 +5,11 @@ import {
   qrRateLimiter,
   requireApprovedDoctor,
 } from '../../middleware/security';
+import {
+  parseScheduleAndSlots,
+  formatScheduleWithSlots,
+  getIndependentChamberConfig,
+} from '../../utils/scheduleSlots';
 
 export const doctorRouter = Router();
 
@@ -110,8 +115,23 @@ doctorRouter.get(
           }),
         ]);
 
+      const indepConfig = getIndependentChamberConfig(doctor.profileVisibility);
+      const enrichedAffiliations = doctor.workspaceAffiliations.map((aff) => {
+        const parsed = parseScheduleAndSlots(aff.schedule);
+        return {
+          ...aff,
+          scheduleLabel: parsed.scheduleLabel,
+          availableSlots: parsed.availableSlots,
+        };
+      });
+
       res.json({
-        doctor,
+        doctor: {
+          ...doctor,
+          independentSchedule: indepConfig.independentSchedule,
+          independentSlots: indepConfig.independentSlots,
+          workspaceAffiliations: enrichedAffiliations,
+        },
         metrics: {
           activeQrStackCount: activeQrQueue.length,
           totalPrescriptionsIssued: totalPrescriptions,
@@ -732,9 +752,20 @@ doctorRouter.get(
         }),
       ]);
 
+      const indepConfig = getIndependentChamberConfig(doctor.profileVisibility);
+      const enrichedAffiliations = affiliations.map((aff) => {
+        const parsed = parseScheduleAndSlots(aff.schedule);
+        return {
+          ...aff,
+          scheduleLabel: parsed.scheduleLabel,
+          availableSlots: parsed.availableSlots,
+        };
+      });
+
       res.json({
-        affiliations,
+        affiliations: enrichedAffiliations,
         availableWorkspaces,
+        independentChamber: indepConfig,
       });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to load Doctor affiliations' });
@@ -753,6 +784,8 @@ doctorRouter.post(
         workspaceId,
         consultationFee = 1000,
         schedule = 'Sun, Tue, Thu: 5:00 PM - 9:00 PM',
+        availableSlots,
+        roomNumber,
         department,
       } = req.body;
 
@@ -770,6 +803,11 @@ doctorRouter.post(
         return;
       }
 
+      const formattedSchedule = formatScheduleWithSlots(
+        String(schedule),
+        Array.isArray(availableSlots) ? availableSlots : undefined
+      );
+
       const affiliation = await prisma.doctorWorkspaceAffiliation.upsert({
         where: {
           doctorId_workspaceId: {
@@ -782,7 +820,8 @@ doctorRouter.post(
           statusUpdatedBy: 'DOCTOR',
           status: 'PENDING',
           consultationFee: Number(consultationFee) || 1000,
-          schedule: String(schedule),
+          schedule: formattedSchedule,
+          ...(roomNumber !== undefined ? { roomNumber: roomNumber || null } : {}),
           department: department || null,
         },
         create: {
@@ -792,7 +831,8 @@ doctorRouter.post(
           statusUpdatedBy: 'DOCTOR',
           status: 'PENDING',
           consultationFee: Number(consultationFee) || 1000,
-          schedule: String(schedule),
+          schedule: formattedSchedule,
+          roomNumber: roomNumber || null,
           department: department || null,
         },
         include: {
@@ -854,9 +894,13 @@ doctorRouter.patch(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const doctorId = req.user!.doctorId!;
-      const { status, consultationFee, schedule } = req.body; // 'ACTIVE', 'REJECTED', 'REVOKED', 'PENDING'
+      const { status, consultationFee, schedule, availableSlots, roomNumber } =
+        req.body; // 'ACTIVE', 'REJECTED', 'REVOKED', 'PENDING' or schedule-only update
 
-      if (!['ACTIVE', 'REJECTED', 'REVOKED', 'PENDING'].includes(status)) {
+      if (
+        status !== undefined &&
+        !['ACTIVE', 'REJECTED', 'REVOKED', 'PENDING'].includes(status)
+      ) {
         res.status(400).json({
           error: 'status must be ACTIVE, REJECTED, REVOKED, or PENDING',
         });
@@ -877,8 +921,8 @@ doctorRouter.patch(
       }
 
       // Security check: Doctor can set ACTIVE only if accepting an incoming workspace invite
-      // OR undoing their own previous revocation!
-      if (status === 'ACTIVE') {
+      // OR undoing their own previous revocation, OR keeping an already ACTIVE affiliation active while updating schedule/slots!
+      if (status === 'ACTIVE' && aff.status !== 'ACTIVE') {
         const canAcceptInvite =
           aff.status === 'PENDING' && aff.initiatedBy === 'WORKSPACE';
         const canUndoOwnRevoke =
@@ -898,16 +942,29 @@ doctorRouter.patch(
         aff.status === 'REVOKED' &&
         aff.statusUpdatedBy === 'DOCTOR';
 
+      const nextSchedule =
+        schedule !== undefined || Array.isArray(availableSlots)
+          ? formatScheduleWithSlots(
+              schedule !== undefined ? String(schedule) : aff.schedule,
+              Array.isArray(availableSlots) ? availableSlots : undefined
+            )
+          : undefined;
+
       const updated = await prisma.doctorWorkspaceAffiliation.update({
         where: { id: aff.id },
         data: {
-          status,
-          statusUpdatedBy: 'DOCTOR',
-          ...(status === 'PENDING' ? { initiatedBy: 'DOCTOR' } : {}),
+          ...(status !== undefined && status !== aff.status
+            ? {
+                status,
+                statusUpdatedBy: 'DOCTOR',
+                ...(status === 'PENDING' ? { initiatedBy: 'DOCTOR' } : {}),
+              }
+            : {}),
           ...(consultationFee !== undefined
             ? { consultationFee: Number(consultationFee) }
             : {}),
-          ...(schedule !== undefined ? { schedule: String(schedule) } : {}),
+          ...(nextSchedule !== undefined ? { schedule: nextSchedule } : {}),
+          ...(roomNumber !== undefined ? { roomNumber: roomNumber || null } : {}),
         },
         include: {
           workspace: {
@@ -1006,6 +1063,8 @@ doctorRouter.patch(
         defaultConsultationFee,
         profileImage,
         profileVisibility,
+        independentSchedule,
+        independentSlots,
       } = req.body;
 
       const updateData: any = {};
@@ -1033,11 +1092,29 @@ doctorRouter.patch(
       if (defaultConsultationFee !== undefined)
         updateData.defaultConsultationFee = Number(defaultConsultationFee);
       if (profileImage !== undefined) updateData.profileImage = profileImage;
-      if (profileVisibility !== undefined && typeof profileVisibility === 'object') {
-        updateData.profileVisibility = {
-          ...(doctor.profileVisibility as Record<string, any>),
-          ...profileVisibility,
+      if (
+        (profileVisibility !== undefined && typeof profileVisibility === 'object') ||
+        independentSchedule !== undefined ||
+        independentSlots !== undefined
+      ) {
+        const currentVis = (doctor.profileVisibility as Record<string, any>) || {};
+        const mergedVis: Record<string, any> = {
+          ...currentVis,
+          ...(profileVisibility && typeof profileVisibility === 'object'
+            ? profileVisibility
+            : {}),
         };
+        if (independentSchedule !== undefined) {
+          mergedVis.independentSchedule = String(independentSchedule).trim();
+        }
+        if (Array.isArray(independentSlots)) {
+          mergedVis.independentSlots = Array.from(
+            new Set(
+              independentSlots.map((s: any) => String(s).trim()).filter(Boolean)
+            )
+          );
+        }
+        updateData.profileVisibility = mergedVis;
       }
 
       const updated = await prisma.doctorProfile.update({

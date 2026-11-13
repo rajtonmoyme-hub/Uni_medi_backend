@@ -1040,7 +1040,7 @@
       "name": "04. Patient Portal (Vault, 2h QR Sharing, Doctor Search, Family Proxy & Packages)",
       "item": [
         {
-          "name": "Patient Dashboard (Featured Packages, Vault, QR, Family)",
+          "name": "Patient Dashboard (Featured Packages, Vault Summary, Active Medications, Activity Logs, QR, Family)",
           "event": [
             {
               "listen": "test",
@@ -1081,11 +1081,11 @@
               ],
               "query": []
             },
-            "description": "Loads Patient dashboard including featured hospital packages (e.g. Full Body Checkup 10,000 Tk), recent vault items, and family accounts."
+            "description": "Loads Patient dashboard including featured hospital packages, vault summary & active medications, recent activity logs, upcoming appointments, and family accounts."
           }
         },
         {
-          "name": "Patient Report & Prescription Vault (Sort by Doctor or Workspace)",
+          "name": "Patient Report & Prescription Vault (Search & Sort by Doctor, Workspace, or Keyword)",
           "event": [
             {
               "listen": "test",
@@ -1131,7 +1131,62 @@
                 }
               ]
             },
-            "description": "Lists all prescriptions, lab reports, and billing docs in the Patient Vault with sorting by Doctor name or Workspace name."
+            "description": "Lists all prescriptions, lab reports, and billing docs in the Patient Vault with keyword search and sorting by Doctor name or Workspace name."
+          }
+        },
+        {
+          "name": "Self-Upload Historical or External Clinical Document to Vault",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"LAB_REPORT\",\n  \"title\": \"External Fasting Lipid Profile Report\",\n  \"summary\": \"Total Cholesterol 182 mg/dL, LDL 104 mg/dL\",\n  \"doctorNameSnapshot\": \"Dr. Mahmudul Hasan\",\n  \"workspaceNameSnapshot\": \"Popular Diagnostic Centre\",\n  \"structuredData\": {\n    \"testCategory\": \"Lipid Panel\",\n    \"parameters\": [\n      {\n        \"name\": \"Total Cholesterol\",\n        \"result\": \"182 mg/dL\",\n        \"referenceRange\": \"< 200 mg/dL\",\n        \"flag\": \"NORMAL\"\n      }\n    ],\n    \"conclusion\": \"Within normal lipid reference limits.\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/vault/self-upload",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "vault",
+                "self-upload"
+              ],
+              "query": []
+            },
+            "description": "Allows a patient or proxy maintainer to log an external prescription, lab report, or invoice into their Vault."
           }
         },
         {
@@ -1392,6 +1447,62 @@
           }
         },
         {
+          "name": "Cancel Pending or Approved Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Status code is expected\", function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 403]);",
+                  "});",
+                  "pm.test(\"Response is valid JSON\", function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{patientToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Schedule conflict — will rebook next week\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/patient/appointments/{{appointmentId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "patient",
+                "appointments",
+                "{{appointmentId}}",
+                "cancel"
+              ],
+              "query": []
+            },
+            "description": "Cancels a pending or approved patient appointment and notifies the hospital or independent doctor."
+          }
+        },
+        {
           "name": "Search & Sort Registered Hospitals & Packages",
           "event": [
             {
@@ -1442,7 +1553,7 @@
           }
         },
         {
-          "name": "Update Patient Profile (Multiple Emails/Numbers, Avatar, Password)",
+          "name": "Update Patient Profile (Demographics, Emergency Contact, Multiple Emails/Numbers, Avatar, Password)",
           "event": [
             {
               "listen": "test",
@@ -1473,7 +1584,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Tanvir Ahmed\",\n  \"secondaryEmails\": [\n    \"tanvir.personal@gmail.com\",\n    \"tanvir.work@bd.org\"\n  ],\n  \"secondaryPhones\": [\n    \"+8801811000001\",\n    \"+8801911000002\"\n  ]\n}",
+              "raw": "{\n  \"name\": \"Tanvir Ahmed\",\n  \"gender\": \"Male\",\n  \"dateOfBirth\": \"1988-05-14\",\n  \"bloodGroup\": \"O+\",\n  \"emergencyContact\": \"Nusrat Jahan (Spouse) — +8801711223344\",\n  \"secondaryEmails\": [\n    \"tanvir.personal@gmail.com\",\n    \"tanvir.work@bd.org\"\n  ],\n  \"secondaryPhones\": [\n    \"+8801811000001\",\n    \"+8801911000002\"\n  ]\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1492,7 +1603,7 @@
               ],
               "query": []
             },
-            "description": "Updates patient profile including multiple emails and phone numbers."
+            "description": "Updates patient profile including gender, date of birth, blood group, emergency contact, and secondary emails/phones."
           }
         },
         {

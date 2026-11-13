@@ -9,6 +9,10 @@ import {
   WORKSPACE_PERMISSION_CATALOG,
   ALL_PERMISSION_KEYS,
 } from '../../config/permissions';
+import {
+  parseScheduleAndSlots,
+  formatScheduleWithSlots,
+} from '../../utils/scheduleSlots';
 
 export const workspaceRouter = Router();
 
@@ -1095,7 +1099,14 @@ workspaceRouter.get(
       ]);
 
       res.json({
-        affiliations,
+        affiliations: affiliations.map((aff) => {
+          const parsed = parseScheduleAndSlots(aff.schedule);
+          return {
+            ...aff,
+            scheduleLabel: parsed.scheduleLabel,
+            availableSlots: parsed.availableSlots,
+          };
+        }),
         directoryDoctors,
       });
     } catch (err: any) {
@@ -1115,6 +1126,7 @@ workspaceRouter.post(
         doctorIdentifier,
         consultationFee = 1000,
         schedule = 'Sun, Tue, Thu: 5:00 PM - 9:00 PM',
+        availableSlots,
         roomNumber = 'Room 302',
         department,
       } = req.body;
@@ -1152,6 +1164,11 @@ workspaceRouter.post(
         where: { id: workspaceId },
       });
 
+      const formattedSchedule = formatScheduleWithSlots(
+        String(schedule),
+        Array.isArray(availableSlots) ? availableSlots : undefined
+      );
+
       const affiliation = await prisma.doctorWorkspaceAffiliation.upsert({
         where: {
           doctorId_workspaceId: {
@@ -1164,7 +1181,7 @@ workspaceRouter.post(
           statusUpdatedBy: 'WORKSPACE',
           status: 'PENDING',
           consultationFee: Number(consultationFee) || 1000,
-          schedule: String(schedule),
+          schedule: formattedSchedule,
           roomNumber: roomNumber || null,
           department: department || doctor.specialty,
         },
@@ -1175,7 +1192,7 @@ workspaceRouter.post(
           statusUpdatedBy: 'WORKSPACE',
           status: 'PENDING',
           consultationFee: Number(consultationFee) || 1000,
-          schedule: String(schedule),
+          schedule: formattedSchedule,
           roomNumber: roomNumber || null,
           department: department || doctor.specialty,
         },
@@ -1226,8 +1243,14 @@ workspaceRouter.patch(
   async (req: Request, res: Response): Promise<void> => {
     try {
       const { workspaceId, permissions } = req.workspaceContext!;
-      const { status, consultationFee, schedule, roomNumber, department } =
-        req.body;
+      const {
+        status,
+        consultationFee,
+        schedule,
+        availableSlots,
+        roomNumber,
+        department,
+      } = req.body;
 
       const aff = await prisma.doctorWorkspaceAffiliation.findFirst({
         where: {
@@ -1278,6 +1301,7 @@ workspaceRouter.patch(
       if (
         (consultationFee !== undefined ||
           schedule !== undefined ||
+          availableSlots !== undefined ||
           roomNumber !== undefined) &&
         !permissions.includes('doctors.schedule') &&
         !permissions.includes('doctors.invite')
@@ -1287,6 +1311,14 @@ workspaceRouter.patch(
         });
         return;
       }
+
+      const nextSchedule =
+        schedule !== undefined || Array.isArray(availableSlots)
+          ? formatScheduleWithSlots(
+              schedule !== undefined ? String(schedule) : aff.schedule,
+              Array.isArray(availableSlots) ? availableSlots : undefined
+            )
+          : undefined;
 
       const updated = await prisma.doctorWorkspaceAffiliation.update({
         where: { id: aff.id },
@@ -1301,7 +1333,7 @@ workspaceRouter.patch(
           ...(consultationFee !== undefined
             ? { consultationFee: Number(consultationFee) }
             : {}),
-          ...(schedule !== undefined ? { schedule: String(schedule) } : {}),
+          ...(nextSchedule !== undefined ? { schedule: nextSchedule } : {}),
           ...(roomNumber !== undefined ? { roomNumber } : {}),
           ...(department !== undefined ? { department } : {}),
         },
@@ -1342,9 +1374,14 @@ workspaceRouter.patch(
         });
       }
 
+      const parsedUpdated = parseScheduleAndSlots(updated.schedule);
       res.json({
         message: 'Doctor affiliation updated.',
-        affiliation: updated,
+        affiliation: {
+          ...updated,
+          scheduleLabel: parsedUpdated.scheduleLabel,
+          availableSlots: parsedUpdated.availableSlots,
+        },
         auditLog,
       });
     } catch (err: any) {

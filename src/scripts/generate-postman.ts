@@ -401,21 +401,48 @@ export function generatePostmanFiles() {
         name: '04. Patient Portal (Vault, 2h QR Sharing, Doctor Search, Family Proxy & Packages)',
         item: [
           buildItem({
-            name: 'Patient Dashboard (Featured Packages, Vault, QR, Family)',
+            name: 'Patient Dashboard (Featured Packages, Vault Summary, Active Medications, Activity Logs, QR, Family)',
             method: 'GET',
             pathSegments: ['api', 'patient', 'dashboard'],
             tokenVar: 'patientToken',
             description:
-              'Loads Patient dashboard including featured hospital packages (e.g. Full Body Checkup 10,000 Tk), recent vault items, and family accounts.',
+              'Loads Patient dashboard including featured hospital packages, vault summary & active medications, recent activity logs, upcoming appointments, and family accounts.',
           }),
           buildItem({
-            name: 'Patient Report & Prescription Vault (Sort by Doctor or Workspace)',
+            name: 'Patient Report & Prescription Vault (Search & Sort by Doctor, Workspace, or Keyword)',
             method: 'GET',
             pathSegments: ['api', 'patient', 'vault'],
             query: [{ key: 'sortBy', value: 'date_desc' }],
             tokenVar: 'patientToken',
             description:
-              'Lists all prescriptions, lab reports, and billing docs in the Patient Vault with sorting by Doctor name or Workspace name.',
+              'Lists all prescriptions, lab reports, and billing docs in the Patient Vault with keyword search and sorting by Doctor name or Workspace name.',
+          }),
+          buildItem({
+            name: 'Self-Upload Historical or External Clinical Document to Vault',
+            method: 'POST',
+            pathSegments: ['api', 'patient', 'vault', 'self-upload'],
+            tokenVar: 'patientToken',
+            body: {
+              type: 'LAB_REPORT',
+              title: 'External Fasting Lipid Profile Report',
+              summary: 'Total Cholesterol 182 mg/dL, LDL 104 mg/dL',
+              doctorNameSnapshot: 'Dr. Mahmudul Hasan',
+              workspaceNameSnapshot: 'Popular Diagnostic Centre',
+              structuredData: {
+                testCategory: 'Lipid Panel',
+                parameters: [
+                  {
+                    name: 'Total Cholesterol',
+                    result: '182 mg/dL',
+                    referenceRange: '< 200 mg/dL',
+                    flag: 'NORMAL',
+                  },
+                ],
+                conclusion: 'Within normal lipid reference limits.',
+              },
+            },
+            description:
+              'Allows a patient or proxy maintainer to log an external prescription, lab report, or invoice into their Vault.',
           }),
           buildItem({
             name: 'Generate 2-Hour Temporary QR Code for Selected Vault Docs',
@@ -480,6 +507,23 @@ export function generatePostmanFiles() {
               'Books an appointment at a specific affiliated workspace (confirmed by Workspace Staff).',
           }),
           buildItem({
+            name: 'Cancel Pending or Approved Appointment',
+            method: 'PATCH',
+            pathSegments: [
+              'api',
+              'patient',
+              'appointments',
+              '{{appointmentId}}',
+              'cancel',
+            ],
+            tokenVar: 'patientToken',
+            body: {
+              reason: 'Schedule conflict — will rebook next week',
+            },
+            description:
+              'Cancels a pending or approved patient appointment and notifies the hospital or independent doctor.',
+          }),
+          buildItem({
             name: 'Search & Sort Registered Hospitals & Packages',
             method: 'GET',
             pathSegments: ['api', 'patient', 'workspaces'],
@@ -489,17 +533,21 @@ export function generatePostmanFiles() {
               'Returns top promotional package cards and searchable/sortable hospital directory.',
           }),
           buildItem({
-            name: 'Update Patient Profile (Multiple Emails/Numbers, Avatar, Password)',
+            name: 'Update Patient Profile (Demographics, Emergency Contact, Multiple Emails/Numbers, Avatar, Password)',
             method: 'PATCH',
             pathSegments: ['api', 'patient', 'profile'],
             tokenVar: 'patientToken',
             body: {
               name: 'Tanvir Ahmed',
+              gender: 'Male',
+              dateOfBirth: '1988-05-14',
+              bloodGroup: 'O+',
+              emergencyContact: 'Nusrat Jahan (Spouse) — +8801711223344',
               secondaryEmails: ['tanvir.personal@gmail.com', 'tanvir.work@bd.org'],
               secondaryPhones: ['+8801811000001', '+8801911000002'],
             },
             description:
-              'Updates patient profile including multiple emails and phone numbers.',
+              'Updates patient profile including gender, date of birth, blood group, emergency contact, and secondary emails/phones.',
           }),
           buildItem({
             name: 'Family Management — View Child & Senior Dependents',

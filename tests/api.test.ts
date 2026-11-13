@@ -559,6 +559,34 @@ describe('Unified Health Platform — Comprehensive End-to-End API & Security Su
     );
 
     // 3. Patient books appointment at Affiliated Hospital AND Independent Chamber
+    // Verify Doctor Directory exposes configured availableSlots and independentSlots
+    const dirDocsRes = await request(app)
+      .get('/api/patient/doctors')
+      .set('Authorization', `Bearer ${patientToken}`);
+    expect(dirDocsRes.status).toBe(200);
+    const rahmanDirDoc = dirDocsRes.body.doctors.find(
+      (d: any) => d.id === drRahmanId
+    );
+    expect(rahmanDirDoc).toBeDefined();
+    expect(Array.isArray(rahmanDirDoc.independentSlots)).toBe(true);
+    expect(rahmanDirDoc.independentSlots).toContain('07:00 PM');
+    expect(Array.isArray(rahmanDirDoc.affiliations[0].availableSlots)).toBe(true);
+    expect(rahmanDirDoc.affiliations[0].availableSlots).toContain('06:00 PM');
+
+    // Attempting to request an appointment with an unconfigured timeSlot must be rejected (400 SLOT_NOT_AVAILABLE)
+    const invalidSlotApptRes = await request(app)
+      .post('/api/patient/appointments')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({
+        doctorId: drRahmanId,
+        workspaceId: evercareWorkspaceId,
+        appointmentDate: '2026-11-20',
+        timeSlot: '03:15 AM',
+        reason: 'Invalid unconfigured time slot attempt',
+      });
+    expect(invalidSlotApptRes.status).toBe(400);
+    expect(invalidSlotApptRes.body.code).toBe('SLOT_NOT_AVAILABLE');
+
     const hospApptRes = await request(app)
       .post('/api/patient/appointments')
       .set('Authorization', `Bearer ${patientToken}`)
@@ -583,6 +611,72 @@ describe('Unified Health Platform — Comprehensive End-to-End API & Security Su
       });
     expect(indepApptRes.status).toBe(201);
     expect(indepApptRes.body.appointment.workspaceId).toBeNull();
+
+    // Cancel the Independent Chamber appointment request
+    const cancelApptRes = await request(app)
+      .patch(`/api/patient/appointments/${indepApptRes.body.appointment.id}/cancel`)
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ reason: 'Schedule conflict' });
+    expect(cancelApptRes.status).toBe(200);
+    expect(cancelApptRes.body.appointment.status).toBe('CANCELLED');
+
+    // Self-upload external clinical record to Patient Vault & search by keyword
+    const selfUploadRes = await request(app)
+      .post('/api/patient/vault/self-upload')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({
+        type: 'LAB_REPORT',
+        title: 'External Fasting Lipid Profile Report',
+        summary: 'Total Cholesterol 182 mg/dL',
+        doctorNameSnapshot: 'Dr. Mahmudul Hasan',
+        workspaceNameSnapshot: 'Popular Diagnostic Centre',
+        structuredData: {
+          parameters: [
+            {
+              name: 'Total Cholesterol',
+              result: '182 mg/dL',
+              referenceRange: '< 200 mg/dL',
+              flag: 'NORMAL',
+            },
+          ],
+        },
+      });
+    expect(selfUploadRes.status).toBe(201);
+    expect(selfUploadRes.body.document.documentCode).toMatch(/^LAB-EXT-/);
+
+    const searchVaultRes = await request(app)
+      .get('/api/patient/vault?search=Lipid')
+      .set('Authorization', `Bearer ${patientToken}`);
+    expect(searchVaultRes.status).toBe(200);
+    expect(searchVaultRes.body.documents.length).toBeGreaterThanOrEqual(1);
+
+    // Update patient profile with clinical demographics & emergency contact
+    const profilePatchRes = await request(app)
+      .patch('/api/patient/profile')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({
+        gender: 'Male',
+        dateOfBirth: '1988-05-14',
+        bloodGroup: 'O+',
+        emergencyContact: 'Nusrat Jahan (Spouse) — +8801711223344',
+      });
+    expect(profilePatchRes.status).toBe(200);
+    expect(profilePatchRes.body.patient.emergencyContact).toContain(
+      'Nusrat Jahan'
+    );
+
+    // Verify enriched Patient Dashboard includes vaultSummary, activeMedications, and recentActivityLogs
+    const enrichedDashRes = await request(app)
+      .get('/api/patient/dashboard')
+      .set('Authorization', `Bearer ${patientToken}`);
+    expect(enrichedDashRes.status).toBe(200);
+    expect(enrichedDashRes.body.vaultSummary).toBeDefined();
+    expect(enrichedDashRes.body.vaultSummary.total).toBeGreaterThan(0);
+    expect(
+      Array.isArray(enrichedDashRes.body.vaultSummary.activeMedications)
+    ).toBe(true);
+    expect(Array.isArray(enrichedDashRes.body.recentActivityLogs)).toBe(true);
+    expect(enrichedDashRes.body.recentActivityLogs.length).toBeGreaterThan(0);
 
     // 4. Central Registry Overview & Notifications
     const dghsOverview = await request(app)
