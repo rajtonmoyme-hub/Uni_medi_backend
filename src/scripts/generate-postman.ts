@@ -198,8 +198,34 @@ export function generatePostmanFiles() {
               password: 'Demo@2026',
               accountType: 'NORMAL',
             },
+            testScript: [
+              'const json = pm.response.json();',
+              'pm.test("Registration succeeds", () => pm.expect(pm.response.code).to.be.oneOf([201, 409]));',
+              'pm.test("OTP code is never leaked in API response", () => {',
+              '    pm.expect(json.demoOtpHint).to.be.undefined;',
+              '    pm.expect(json.otpCode).to.be.undefined;',
+              '});',
+            ],
             description:
-              'Registers a new Patient account, generates unique_id, and sends 6-digit OTP via Resend SMTP.',
+              'Registers a new Patient account, generates unique_id, and sends the 6-digit OTP via Resend SMTP only (never returned in the response payload).',
+          }),
+          buildItem({
+            name: 'Resend Patient OTP (SMTP Only)',
+            method: 'POST',
+            pathSegments: ['api', 'auth', 'patient', 'resend-otp'],
+            tokenVar: '',
+            body: {
+              identifier: 'nadia.patient@demo.bd',
+            },
+            testScript: [
+              'const json = pm.response.json();',
+              'pm.test("OTP code is never leaked in resend response", () => {',
+              '    pm.expect(json.demoOtpHint).to.be.undefined;',
+              '    pm.expect(json.otpCode).to.be.undefined;',
+              '});',
+            ],
+            description:
+              'Generates a fresh 6-digit OTP and delivers it via configured SMTP without returning the code to the client.',
           }),
           buildItem({
             name: 'Verify Patient OTP',

@@ -73,7 +73,7 @@ describe('Unified Health Platform — Comprehensive End-to-End API & Security Su
     expect(forbiddenRes.status).toBe(403);
   });
 
-  it('03. Patient registration + OTP verification flow works end-to-end', async () => {
+  it('03. Patient registration + OTP verification flow works end-to-end without leaking OTP to client', async () => {
     const regRes = await request(app).post('/api/auth/patient/register').send({
       name: 'Test New Patient',
       email: 'newpatient.e2e@demo.bd',
@@ -83,22 +83,40 @@ describe('Unified Health Platform — Comprehensive End-to-End API & Security Su
     });
     expect(regRes.status).toBe(201);
     expect(regRes.body.uniqueId).toMatch(/^PAT-2026-/);
-    expect(regRes.body.demoOtpHint).toHaveLength(6);
+    expect(regRes.body.demoOtpHint).toBeUndefined();
+    expect(regRes.body.otpCode).toBeUndefined();
 
-    // Login before OTP verification should be blocked with 403 requiresOtp
+    // Login before OTP verification should be blocked with 403 requiresOtp and no OTP leaked
     const prematureLogin = await request(app).post('/api/auth/login').send({
       identifier: 'newpatient.e2e@demo.bd',
       password: 'Demo@2026',
     });
     expect(prematureLogin.status).toBe(403);
     expect(prematureLogin.body.requiresOtp).toBe(true);
+    expect(prematureLogin.body.demoOtpHint).toBeUndefined();
+    expect(prematureLogin.body.otpCode).toBeUndefined();
+
+    // Resend OTP should also never leak OTP in response
+    const resendRes = await request(app)
+      .post('/api/auth/patient/resend-otp')
+      .send({ identifier: 'newpatient.e2e@demo.bd' });
+    expect(resendRes.status).toBe(200);
+    expect(resendRes.body.demoOtpHint).toBeUndefined();
+    expect(resendRes.body.otpCode).toBeUndefined();
+
+    // Fetch stored OTP directly from DB (since backend never sends OTP to frontend)
+    const pendingPatient = await prisma.patientUser.findUnique({
+      where: { id: regRes.body.patientId },
+      select: { otpCode: true },
+    });
+    expect(pendingPatient?.otpCode).toMatch(/^\d{6}$/);
 
     // Verify OTP
     const verifyRes = await request(app)
       .post('/api/auth/patient/verify-otp')
       .send({
         identifier: 'newpatient.e2e@demo.bd',
-        otpCode: regRes.body.demoOtpHint,
+        otpCode: pendingPatient!.otpCode,
       });
     expect(verifyRes.status).toBe(200);
     expect(verifyRes.body.token).toBeDefined();

@@ -13,7 +13,6 @@ const transporter = nodemailer.createTransport({
 
 export interface OtpMailResult {
   sentViaSmtp: boolean;
-  demoOtpHint?: string;
   error?: string;
 }
 
@@ -40,17 +39,10 @@ export async function sendOtpEmail(
     </div>
   `;
 
-  if (env.DEMO_MODE) {
-    console.log(
-      `[OTP-MAILER] Patient=${recipientEmail} (${uniqueId}) | OTP=${otpCode}`
-    );
-  }
-
   // Skip external network call during automated Vitest suite to keep tests deterministic & fast
   if (process.env.NODE_ENV === 'test') {
     return {
       sentViaSmtp: false,
-      demoOtpHint: env.DEMO_MODE ? otpCode : undefined,
     };
   }
 
@@ -63,14 +55,12 @@ export async function sendOtpEmail(
     });
     return {
       sentViaSmtp: true,
-      demoOtpHint: env.DEMO_MODE ? otpCode : undefined,
     };
   } catch (err: any) {
-    console.warn(`[OTP-MAILER] SMTP fallback activated: ${err?.message || err}`);
+    console.error(`[OTP-MAILER] SMTP delivery failed: ${err?.message || err}`);
     return {
       sentViaSmtp: false,
-      demoOtpHint: env.DEMO_MODE ? otpCode : undefined,
-      error: err?.message,
+      error: err?.message || 'SMTP delivery failed',
     };
   }
 }

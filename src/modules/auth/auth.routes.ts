@@ -295,16 +295,19 @@ authRouter.post(
         uniqueId
       );
 
+      const emailDeliveryWarning =
+        !mailResult.sentViaSmtp && process.env.NODE_ENV !== 'test';
+
       res.status(201).json({
-        message:
-          'Patient registered successfully. Please verify your account with the 6-digit OTP sent to your email.',
+        message: emailDeliveryWarning
+          ? 'Patient account created, but the verification email could not be delivered right now. Please click Resend Code to try again.'
+          : 'Patient registered successfully. Please check your email for the 6-digit verification code.',
         uniqueId: createdPatient.uniqueId,
         patientId: createdPatient.id,
         email: createdPatient.email,
         phone: createdPatient.phone,
         requiresOtp: true,
         sentViaSmtp: mailResult.sentViaSmtp,
-        demoOtpHint: mailResult.demoOtpHint,
         familyLinkCreated,
       });
     } catch (err: any) {
@@ -457,10 +460,18 @@ authRouter.post(
         patient.uniqueId
       );
 
+      if (!mailResult.sentViaSmtp && process.env.NODE_ENV !== 'test') {
+        res.status(502).json({
+          error:
+            'Failed to deliver verification email via SMTP. Please try again shortly.',
+          sentViaSmtp: false,
+        });
+        return;
+      }
+
       res.json({
-        message: 'A new 6-digit OTP has been sent to your email.',
+        message: 'A new 6-digit verification code has been sent to your email.',
         sentViaSmtp: mailResult.sentViaSmtp,
-        demoOtpHint: mailResult.demoOtpHint,
       });
     } catch (err: any) {
       res.status(500).json({ error: 'Failed to resend OTP' });
@@ -972,11 +983,11 @@ authRouter.post(
 
       if (!patient.isOtpVerified) {
         res.status(403).json({
-          error: 'Please verify your account with the 6-digit OTP before logging in.',
+          error:
+            'Please verify your account with the 6-digit OTP sent to your email before logging in.',
           requiresOtp: true,
           email: patient.email,
           uniqueId: patient.uniqueId,
-          demoOtpHint: env.DEMO_MODE ? patient.otpCode : undefined,
         });
         return;
       }
